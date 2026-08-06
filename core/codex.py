@@ -126,6 +126,7 @@ def run_codex(
                 stderr=subprocess.STDOUT,
                 text=True,
                 input=input_text,
+                encoding="utf-8",  # 关键：stdin 必须以 UTF-8 编码（Windows 默认区域编码会破坏非 ASCII 提示词）
                 timeout=timeout,
                 check=False,
             )
