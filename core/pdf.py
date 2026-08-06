@@ -27,26 +27,9 @@ def _find_mineru_bin() -> Optional[str]:
 
 
 def _load_env_token(env_path: Optional[Path] = None) -> Optional[str]:
-    env_token = os.environ.get("MINERU_TOKEN")
-    if env_token:
-        return env_token.strip()
-    candidates: List[Path] = []
-    if env_path:
-        candidates.append(env_path)
-    candidates += [
-        Path.cwd() / ".env",
-        Path(__file__).resolve().parent.parent / ".env",  # 工具根目录
-    ]
-    for cand in candidates:
-        if cand and cand.exists():
-            try:
-                for line in cand.read_text(encoding="utf-8", errors="replace").splitlines():
-                    line = line.strip()
-                    if line.startswith("MINERU_TOKEN") and "=" in line:
-                        return line.split("=", 1)[1].strip().strip('"').strip("'")
-            except OSError:
-                continue
-    return None
+    from .env import load_env_value
+
+    return load_env_value("MINERU_TOKEN", env_path)
 
 
 def _find_md(out_dir: Path) -> Optional[Path]:

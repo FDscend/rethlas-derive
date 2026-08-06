@@ -83,7 +83,14 @@ def main() -> None:
 
     derive_mod.codex_mod.run_codex = fake_run_codex
     derive_mod.verify_mod.verify_proof = fake_verify
-    derive_mod.search_mod.search = lambda *a, **k: []  # 搜索返回空，避免网络
+    search_calls = {"n": 0}
+
+    def fake_search(*a, **k):
+        search_calls["n"] += 1
+        return []  # 搜索返回空，避免网络
+
+    derive_mod.search_mod.search = fake_search
+    derive_mod.web_search_mod.get_tavily_key = lambda *a, **k: None  # 无 Tavily key
 
     with tempfile.TemporaryDirectory() as td:
         config = make_config(td)
@@ -101,7 +108,18 @@ def main() -> None:
         agents = (ws_dir / "AGENTS.md").read_text(encoding="utf-8")
         check("AGENTS objective", "blueprint.md" in agents)
         check("AGENTS file-based memory", "memory/" in agents)
+        check("AGENTS references skills", "$direct-proving" in agents)
         check("checkpoint verified", (ws_dir / "checkpoint.json").exists())
+
+        # P1-1：按需检索触发（初始 1 轮 + 第 2 轮迭代重搜）
+        check("re-search triggered", search_calls["n"] >= 2)
+        summary = (ws_dir / "downloads" / "search_summary.md").read_text(encoding="utf-8")
+        check("search summary accumulated", "第 2 轮搜索" in summary)
+
+        # P2-1：skills 生成到工作区
+        skills = ws_dir / ".agents" / "skills"
+        check("skills generated", (skills / "obtain-immediate-conclusions" / "SKILL.md").exists()
+               and (skills / "search-math-results" / "SKILL.md").exists())
 
         # 重复 derive：应直接返回已成功
         again = derive_mod.derive(STATEMENT, config=config)

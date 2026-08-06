@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -100,9 +101,29 @@ def _read_verification(vdir: Path, run_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _setup_verify_workspace(vdir: Path) -> None:
+def _copy_materials(vdir: Path, ws: Workspace) -> None:
+    """把命题的搜索摘要 / 下载论文 / 参考资料复制进验证工作区，供引用核对（P1-2）。"""
+    mat = vdir / "materials"
+    mat.mkdir(parents=True, exist_ok=True)
+    try:
+        if ws.search_summary_path.exists():
+            shutil.copy2(ws.search_summary_path, mat / "search_summary.md")
+        for tex in sorted(ws.downloads_dir.glob("*.tex"))[:10]:
+            shutil.copy2(tex, mat / tex.name)
+        refs = mat / "refs"
+        refs.mkdir(exist_ok=True)
+        for md in sorted(ws.refs_extracted_dir.glob("*.md"))[:10]:
+            shutil.copy2(md, refs / md.name)
+        for f in sorted(ws.refs_dir.glob("*.md"))[:10] + sorted(ws.refs_dir.glob("*.tex"))[:10]:
+            shutil.copy2(f, refs / f.name)
+    except OSError as exc:
+        print(f"[verify] 复制核对材料失败: {exc}")
+
+
+def _setup_verify_workspace(vdir: Path, ws: Workspace) -> None:
     vdir.mkdir(parents=True, exist_ok=True)
     (vdir / "AGENTS.md").write_text(templates.render_verification_agents(), encoding="utf-8")
+    _copy_materials(vdir, ws)
 
 
 def verify_proof(
@@ -114,7 +135,7 @@ def verify_proof(
     """运行验证会话，返回 {verdict, verification_report, repair_hints, ...}。"""
     run_id = _run_id(statement)
     vdir = ws.verify_runs_dir / run_id
-    _setup_verify_workspace(vdir)
+    _setup_verify_workspace(vdir, ws)
 
     prompt = build_verify_prompt(run_id, statement, proof)
     log_path = ws.logs_dir / f"verify_{run_id}.md"

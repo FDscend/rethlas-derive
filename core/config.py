@@ -26,6 +26,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "search": {
         "backend": "theoremsearch",
         "max_search_rounds": 3,
+        "re_search_interval": 2,
         "download_papers": True,
         "download": {
             "format": "tex",
@@ -39,6 +40,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         },
         "leansearch": {
             "endpoint": "https://leansearch.net/thm/search",
+        },
+        "web": {
+            "enabled": True,
+            "max_results": 5,
+            "timeout_seconds": 30,
         },
     },
     "pdf": {

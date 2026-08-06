@@ -11,6 +11,7 @@ from . import codex as codex_mod
 from . import search as search_mod
 from . import templates
 from . import verify as verify_mod
+from . import web_search as web_search_mod
 from .config import Config
 from .workspace import Checkpoint, Workspace, proposition_id
 
@@ -25,6 +26,12 @@ def _utc() -> str:
 
 def _setup_generation_workspace(ws: Workspace) -> None:
     (ws.root / "AGENTS.md").write_text(templates.render_generation_agents(), encoding="utf-8")
+    for name in templates.GEN_SKILLS:
+        skill_dir = ws.root / ".agents" / "skills" / name
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(
+            templates.render_generation_skill(name), encoding="utf-8"
+        )
 
 
 def _extract_ref_pdfs(ws: Workspace, config: Config) -> None:
@@ -42,24 +49,36 @@ def _extract_ref_pdfs(ws: Workspace, config: Config) -> None:
             print(f"[derive] 提取参考 PDF {pdf.name} 失败: {exc}")
 
 
-def _search_round(ws: Workspace, cp: Checkpoint, statement: str, config: Config) -> None:
+def _search_round(
+    ws: Workspace,
+    cp: Checkpoint,
+    statement: str,
+    config: Config,
+    *,
+    round_no: int = 1,
+    extra_query: Optional[str] = None,
+) -> None:
     search_cfg = config.get("search", {})
     ts_cfg = search_cfg.get("theoremsearch", {})
     n_results = int(ts_cfg.get("n_results", 5))
     timeout = int(ts_cfg.get("timeout_seconds", 120))
     backend = search_cfg.get("backend", "theoremsearch")
+    query = statement
+    if extra_query:
+        query = f"{statement}\n\n补充检索关注点：\n{extra_query}"
+
     try:
         results = search_mod.search(
-            statement,
+            query,
             n_results=n_results,
             backend=backend,
             theoremsearch=ts_cfg,
             leansearch=search_cfg.get("leansearch", {}),
             timeout_seconds=timeout,
         )
-        print(f"[derive] 搜索完成，得到 {len(results)} 条结果（backend={backend}）")
+        print(f"[derive] 第 {round_no} 轮搜索完成，得到 {len(results)} 条结果（backend={backend}）")
     except Exception as exc:
-        print(f"[derive] 搜索失败: {exc}")
+        print(f"[derive] 第 {round_no} 轮搜索失败: {exc}")
         results = []
 
     downloaded = []
@@ -76,20 +95,67 @@ def _search_round(ws: Workspace, cp: Checkpoint, statement: str, config: Config)
                 downloaded.append(got["path"])
                 cp.downloads.append(got["path"])
 
-    lines = ["# 搜索摘要\n"]
+    # 网络搜索（Tavily REST）
+    web_results = []
+    web_cfg = search_cfg.get("web", {})
+    if web_cfg.get("enabled", True):
+        try:
+            web_results = web_search_mod.web_search(
+                statement,
+                max_results=int(web_cfg.get("max_results", 5)),
+                timeout_seconds=int(web_cfg.get("timeout_seconds", 30)),
+            )
+            if web_results:
+                print(f"[derive] 网络搜索得到 {len(web_results)} 条（Tavily）")
+        except Exception as exc:
+            print(f"[derive] 网络搜索失败: {exc}")
+
+    # 累积写入 search_summary.md
+    lines: List[str] = []
+    if ws.search_summary_path.exists() and round_no > 1:
+        lines.append(ws.search_summary_path.read_text(encoding="utf-8").rstrip() + "\n")
+    else:
+        lines.append("# 搜索摘要\n")
+    lines.append(f"\n## 第 {round_no} 轮搜索（{'初始' if round_no == 1 else '按需重搜'}）\n")
+    if extra_query:
+        lines.append(f"> 检索关注点：{extra_query}\n")
     for i, r in enumerate(results, 1):
-        lines.append(f"## {i}. {r.get('name') or '(unnamed)'}  [{r.get('source')}]")
+        lines.append(f"### {i}. {r.get('name') or '(unnamed)'}  [{r.get('source')}]")
         lines.append(f"- statement: {r.get('body') or r.get('slogan') or ''}")
         lines.append(f"- paper: {r.get('paper_title')} (paper_id={r.get('paper_id')})")
         if r.get("arxiv_id"):
-            status = "已下载到 downloads/" if r["arxiv_id"] in [str(Path(p).stem) for p in downloaded] else "未下载"
+            downloaded_ids = [str(Path(p).stem) for p in downloaded]
+            status = "已下载到 downloads/" if r["arxiv_id"] in downloaded_ids else "未下载"
             lines.append(f"- arxiv: {r['arxiv_id']}（{status}）")
         lines.append("")
+    if web_results:
+        lines.append("### 网络搜索（Tavily）\n")
+        for j, w in enumerate(web_results, 1):
+            lines.append(f"{j}. **{w.get('title')}**")
+            lines.append(f"   - url: {w.get('url')}")
+            lines.append(f"   - {str(w.get('content', ''))[:400]}")
+            lines.append("")
     ws.search_summary_path.write_text("\n".join(lines), encoding="utf-8")
+    cp.search_rounds = round_no
     cp.updated_at = _utc()
 
 
 # ---------- 生成提示词 ----------
+
+def _feedback_query(verify_payload: Optional[Dict[str, Any]]) -> Optional[str]:
+    """把最近一次验证反馈转成补充检索查询词。"""
+    if not verify_payload:
+        return None
+    report = verify_payload.get("verification_report") or {}
+    parts = []
+    summary = str(report.get("summary", ""))
+    if summary:
+        parts.append(f"验证反馈：{summary[:500]}")
+    hints = verify_payload.get("repair_hints")
+    if hints:
+        parts.append(f"修复建议：{str(hints)[:400]}")
+    return "\n".join(parts) if parts else None
+
 
 def _gen_prompt_first(ws: Workspace) -> str:
     return (
@@ -97,7 +163,8 @@ def _gen_prompt_first(ws: Workspace) -> str:
         f"(the statement is complete; assume all conditions are present). "
         f"problem_id={ws.problem_id}. "
         f"Read refs/ and downloads/ (including downloads/search_summary.md) as needed, "
-        f"and use the MCP tools (memory, search, download) as instructed. "
+        f"and use your skills (e.g. $search-math-results, $obtain-immediate-conclusions) "
+        f"as instructed. "
         f"Write your best complete proof to results/blueprint.md (overwrite)."
     )
 
@@ -118,7 +185,7 @@ def _gen_prompt_resume(ws: Workspace, verify_payload: Optional[Dict[str, Any]]) 
     return (
         f"Please continue working on the proof in results/blueprint.md. "
         f"{feedback} Fix the issues and overwrite results/blueprint.md with your best "
-        f"complete proof. You may search more (MCP search/download) or reason deeply."
+        f"complete proof. You may search more (see downloads/ and your skills) or reason deeply."
     )
 
 
@@ -196,7 +263,9 @@ def derive(
     # 素材准备
     _extract_ref_pdfs(ws, config)
     if not cp.downloads:
-        _search_round(ws, cp, statement, config)
+        _search_round(ws, cp, statement, config, round_no=1)
+    if cp.downloads and cp.search_rounds == 0:
+        cp.search_rounds = 1  # 兼容旧 checkpoint
     _setup_generation_workspace(ws)
     ws.save_checkpoint(cp)
 
@@ -208,10 +277,25 @@ def derive(
     timeout = int(codex_cfg.get("timeout_seconds", 0) or 0)
     bin_name = codex_cfg.get("bin", "codex")
     verify_enabled = bool(config.get("verify", {}).get("enabled", True))
+    search_cfg = config.get("search", {})
+    re_interval = max(1, int(search_cfg.get("re_search_interval", 2)))
+    max_search_rounds = max(1, int(search_cfg.get("max_search_rounds", 3)))
+    web_cfg = search_cfg.get("web", {})
+    web_extra_configs = None
+    if web_cfg.get("enabled", True) and not web_search_mod.get_tavily_key():
+        web_extra_configs = ["web_search=live"]  # 无 Tavily key → codex 内置 web search 降级
 
     while cp.iterations_used < total:
         iter_no = cp.iterations_used + 1
         log_file = ws.logs_dir / f"iter_{iter_no}.md"
+        if iter_no > 1 and iter_no % re_interval == 0 and cp.search_rounds < max_search_rounds:
+            print(f"[derive] 触发第 {cp.search_rounds + 1} 轮按需检索")
+            _search_round(
+                ws, cp, statement, config,
+                round_no=cp.search_rounds + 1,
+                extra_query=_feedback_query(last_verify),
+            )
+            ws.save_checkpoint(cp)
         if ws.blueprint_verified_path.exists():
             cp.status = "verified"
             cp.updated_at = _utc()
@@ -225,6 +309,7 @@ def derive(
                     cwd=ws.root, model=model, reasoning_effort=effort,
                     prompt=_gen_prompt_first(ws), log_path=log_file,
                     timeout_seconds=timeout, bin_name=bin_name,
+                    extra_configs=web_extra_configs,
                 )
                 if res.session_id:
                     cp.codex_session_id = res.session_id
@@ -234,6 +319,7 @@ def derive(
                     prompt=_gen_prompt_resume(ws, last_verify), log_path=log_file,
                     timeout_seconds=timeout, bin_name=bin_name,
                     resume_session_id=cp.codex_session_id,
+                    extra_configs=web_extra_configs,
                 )
         except Exception as exc:
             cp.status = "failed"

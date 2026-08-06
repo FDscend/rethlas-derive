@@ -21,12 +21,17 @@ codex:
 # ---- 定理搜索 ----
 search:
   backend: theoremsearch # theoremsearch（默认）| leansearch（预留）
-  max_search_rounds: 3 # 推导循环内最多自动搜索几轮
+  max_search_rounds: 3 # 最多自动搜索几轮（含首轮）
+  re_search_interval: 2 # 每 N 轮迭代触发一次按需重搜
   download_papers: true # 搜索到的论文是否下载到 <命题>/downloads/
   download:
     format: tex # tex（默认，下载 arXiv TeX 源，免 PDF 转换）| pdf
     timeout_seconds: 60 # 单个文件下载超时
     ratelimit_seconds: 2 # 下载间隔（arXiv 限速）
+  web:
+    enabled: true # 网络搜索（Tavily REST，需 .env 的 TAVILY_API_KEY；无 key 自动降级 codex web search）
+    max_results: 5
+    timeout_seconds: 30
   theoremsearch:
     api_base: https://api.theoremsearch.com
     n_results: 5 # 每次搜索返回条数

@@ -36,6 +36,7 @@ class Checkpoint:
     last_verdict: Optional[str] = None  # correct | wrong
     refs: List[str] = field(default_factory=list)
     downloads: List[str] = field(default_factory=list)
+    search_rounds: int = 0
     verify_report_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -51,6 +52,7 @@ class Checkpoint:
             "last_verdict": self.last_verdict,
             "refs": self.refs,
             "downloads": self.downloads,
+            "search_rounds": self.search_rounds,
             "verify_report_path": self.verify_report_path,
         }
 
@@ -68,6 +70,7 @@ class Checkpoint:
             last_verdict=data.get("last_verdict"),
             refs=list(data.get("refs", []) or []),
             downloads=list(data.get("downloads", []) or []),
+            search_rounds=int(data.get("search_rounds", 0) or 0),
             verify_report_path=data.get("verify_report_path"),
         )
 
