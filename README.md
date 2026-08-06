@@ -79,9 +79,9 @@ tests/                 # 冒烟测试 + 推导循环逻辑测试
 Windows（PowerShell）：
 
 ```powershell
-.\\.venv\\Scripts\\python tests\\smoke.py            # 冒烟测试（含网络）
-.\\.venv\\Scripts\\python tests\\smoke.py --offline  # 跳过网络
-.\\.venv\\Scripts\\python tests\\derive_loop_test.py # 推导循环逻辑（fake codex）
+.\.venv\Scripts\python tests\smoke.py            # 冒烟测试（含网络）
+.\.venv\Scripts\python tests\smoke.py --offline  # 跳过网络
+.\.venv\Scripts\python tests\derive_loop_test.py # 推导循环逻辑（fake codex）
 ```
 
 macOS / Linux（bash）：
