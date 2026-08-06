@@ -37,6 +37,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "n_results": 5,
             "timeout_seconds": 120,
         },
+        "leansearch": {
+            "endpoint": "https://leansearch.net/thm/search",
+        },
     },
     "pdf": {
         "backend": "mineru",

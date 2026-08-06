@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -22,12 +21,14 @@ from .workspace import Workspace
 PROOF_DELIMITER_START = "===BEGIN PROOF==="
 PROOF_DELIMITER_END = "===END PROOF==="
 
-# 验证器偶发把非空证明误判为"缺少证明文本"，保留窄关键词避免误伤真实数学漏洞。
+# 验证器偶发把（非空）证明误判为"缺少证明文本"，保留窄关键词避免误伤真实数学漏洞。
 MISSING_PROOF_KEYWORDS = (
     "proof text is missing",
     "proof text was not supplied",
     "no proof text was supplied",
     "no proof text was provided",
+    "no proof text was found",
+    "no proof text enclosed",
     "does not include any proof",
     "provides no markdown proof",
     "provides no proof text",
@@ -35,6 +36,15 @@ MISSING_PROOF_KEYWORDS = (
     "no markdown proof was provided",
     "no proof was supplied",
     "no proof was provided",
+    "no proof body",
+    "no theorem statement",
+    "no statement was provided",
+    "no statement was supplied",
+    "statement is missing",
+    "proof is missing from the prompt",
+    "only a run_id",
+    "proof cannot be verified",
+    "missing_input",
 )
 
 
@@ -90,21 +100,9 @@ def _read_verification(vdir: Path, run_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _setup_verify_workspace(vdir: Path, config: Config, tool_dir: Path, workdir: Path) -> None:
+def _setup_verify_workspace(vdir: Path) -> None:
     vdir.mkdir(parents=True, exist_ok=True)
     (vdir / "AGENTS.md").write_text(templates.render_verification_agents(), encoding="utf-8")
-    codex_dir = vdir / ".codex"
-    codex_dir.mkdir(parents=True, exist_ok=True)
-    (codex_dir / "config.toml").write_text(
-        templates.render_codex_toml(
-            config=config,
-            python_exe=sys.executable,
-            server=str(tool_dir / "core" / "agent_mcp.py"),
-            tool_dir=str(tool_dir),
-            workdir=str(workdir),
-        ),
-        encoding="utf-8",
-    )
 
 
 def verify_proof(
@@ -112,13 +110,11 @@ def verify_proof(
     statement: str,
     proof: str,
     config: Config,
-    tool_dir: Path,
-    workdir: Path,
 ) -> Dict[str, Any]:
     """运行验证会话，返回 {verdict, verification_report, repair_hints, ...}。"""
     run_id = _run_id(statement)
     vdir = ws.verify_runs_dir / run_id
-    _setup_verify_workspace(vdir, config, tool_dir, workdir)
+    _setup_verify_workspace(vdir)
 
     prompt = build_verify_prompt(run_id, statement, proof)
     log_path = ws.logs_dir / f"verify_{run_id}.md"

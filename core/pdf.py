@@ -33,7 +33,10 @@ def _load_env_token(env_path: Optional[Path] = None) -> Optional[str]:
     candidates: List[Path] = []
     if env_path:
         candidates.append(env_path)
-    candidates += [Path.cwd() / ".env", Path(".env")]
+    candidates += [
+        Path.cwd() / ".env",
+        Path(__file__).resolve().parent.parent / ".env",  # 工具根目录
+    ]
     for cand in candidates:
         if cand and cand.exists():
             try:

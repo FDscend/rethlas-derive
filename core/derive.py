@@ -4,7 +4,6 @@
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,26 +21,10 @@ def _utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _tool_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
 # ---------- 工作区与素材准备 ----------
 
-def _setup_generation_workspace(ws: Workspace, config: Config, tool_dir: Path, workdir: Path) -> None:
+def _setup_generation_workspace(ws: Workspace) -> None:
     (ws.root / "AGENTS.md").write_text(templates.render_generation_agents(), encoding="utf-8")
-    codex_dir = ws.root / ".codex"
-    codex_dir.mkdir(parents=True, exist_ok=True)
-    (codex_dir / "config.toml").write_text(
-        templates.render_codex_toml(
-            config=config,
-            python_exe=sys.executable,
-            server=str(tool_dir / "core" / "agent_mcp.py"),
-            tool_dir=str(tool_dir),
-            workdir=str(workdir),
-        ),
-        encoding="utf-8",
-    )
 
 
 def _extract_ref_pdfs(ws: Workspace, config: Config) -> None:
@@ -71,6 +54,7 @@ def _search_round(ws: Workspace, cp: Checkpoint, statement: str, config: Config)
             n_results=n_results,
             backend=backend,
             theoremsearch=ts_cfg,
+            leansearch=search_cfg.get("leansearch", {}),
             timeout_seconds=timeout,
         )
         print(f"[derive] 搜索完成，得到 {len(results)} 条结果（backend={backend}）")
@@ -174,7 +158,6 @@ def derive(
 
         config = load_config()
     workdir = config.resolve_workdir(cli_workdir)
-    tool_dir = _tool_root()
 
     pid = resume_id or proposition_id(statement)
     ws = Workspace(workdir, pid)
@@ -214,7 +197,7 @@ def derive(
     _extract_ref_pdfs(ws, config)
     if not cp.downloads:
         _search_round(ws, cp, statement, config)
-    _setup_generation_workspace(ws, config, tool_dir, workdir)
+    _setup_generation_workspace(ws)
     ws.save_checkpoint(cp)
 
     total = cp.max_iterations
@@ -276,7 +259,7 @@ def derive(
             try:
                 payload = verify_mod.verify_proof(
                     ws, statement, ws.blueprint_path.read_text(encoding="utf-8"),
-                    config, tool_dir, workdir,
+                    config,
                 )
             except Exception as exc:
                 print(f"[derive] 验证失败: {exc}")

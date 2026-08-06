@@ -110,11 +110,18 @@ def search(
     n_results: int = 5,
     backend: str = "theoremsearch",
     theoremsearch: Optional[Dict[str, Any]] = None,
+    leansearch: Optional[Dict[str, Any]] = None,
     timeout_seconds: int = 120,
 ) -> List[Dict[str, Any]]:
     """按配置的后端搜索。"""
     if backend == "leansearch":
-        return search_leansearch(query, n_results=n_results, timeout_seconds=timeout_seconds)
+        ls_cfg = leansearch or {}
+        return search_leansearch(
+            query,
+            n_results=n_results,
+            endpoint=ls_cfg.get("endpoint", "https://leansearch.net/thm/search"),
+            timeout_seconds=timeout_seconds,
+        )
     cfg = theoremsearch or {}
     return search_theoremsearch(
         query,
@@ -179,15 +186,36 @@ def download_arxiv(
             allow_redirects=True,
         )
         resp.raise_for_status()
+        content = resp.content
         ctype = (resp.headers.get("content-type") or "").lower()
-        if "gzip" in ctype or "x-tar" in ctype or "octet-stream" in ctype or resp.content[:2] == b"\x1f\x8b":
-            _extract_tex_tarball(resp.content, tex_dest)
-            return {"kind": "tex", "path": str(tex_dest)}
-        if "pdf" in ctype:
-            pdf_dest.write_bytes(resp.content)
+        is_gzip_like = (
+            "gzip" in ctype or "x-tar" in ctype or "octet-stream" in ctype
+            or content[:2] == b"\x1f\x8b"
+        )
+        is_pdf = "pdf" in ctype or content[:4] == b"%PDF"
+        if is_pdf:
+            pdf_dest.write_bytes(content)
             return {"kind": "pdf", "path": str(pdf_dest)}
+        if is_gzip_like:
+            try:
+                _extract_tex_tarball(content, tex_dest)
+                return {"kind": "tex", "path": str(tex_dest)}
+            except Exception:
+                # tar 解析失败：可能是被误标为 gzip 的单 .tex，或单文件 gzip 压缩
+                try:
+                    import gzip as _gzip
+
+                    tex_dest.write_bytes(_gzip.decompress(content))
+                    return {"kind": "tex", "path": str(tex_dest)}
+                except Exception:
+                    pass
+                # 内容其实是文本 .tex（content-type 误标）
+                if content[:1] in (b"%", b"\\") or b"\\documentclass" in content[:2000]:
+                    tex_dest.write_bytes(content)
+                    return {"kind": "tex", "path": str(tex_dest)}
+                raise RuntimeError(f"arXiv e-print 无法解析: {arxiv_id}")
         # 其余按纯文本 .tex 处理
-        tex_dest.write_bytes(resp.content)
+        tex_dest.write_bytes(content)
         return {"kind": "tex", "path": str(tex_dest)}
 
     resp = requests.get(ARXIV_PDF.format(id=arxiv_id), timeout=timeout_seconds, allow_redirects=True)

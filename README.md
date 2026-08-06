@@ -1,6 +1,6 @@
 # rethlas-derive（命题推导工具）
 
-把 `ref\Rethlas` 的「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程封装为独立 CLI（封装成 skill）：
+把「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程（受 Rethlas 启发）封装为独立 CLI（封装成 skill）：
 主 agent 直接传入完整命题表述与参考资料，工具自动搜索、推导、验证、迭代，返回推导结果（JSON + md 路径）。
 
 ## 安装
@@ -44,13 +44,13 @@ cli.py                 # CLI 入口
 core/                  # 核心库
   config.py            # 配置加载 + CLI 覆盖
   workspace.py         # 命题 id / checkpoint / 目录
-  codex.py             # codex exec 封装（Windows 兼容）
+  codex.py             # codex exec 封装（Windows 兼容 + stdin 传提示词）
   search.py            # TheoremSearch + arXiv TeX 源下载
   pdf.py               # PDF 提取（MinerU -> .env python -> PyMuPDF）
   verify.py            # 自然语言验证（独立 codex 会话）
-  derive.py            # 推导循环编排
-  agent_mcp.py         # 内部 MCP server（memory/search/download）
-templates/             # codex 配置与 AGENTS 模板
+  derive.py            # 推导循环编排（纯文件方式，不依赖 codex MCP）
+  agent_mcp.py         # 可选：内部 MCP server（memory/search/download，备用/未来 MCP 包装用）
+templates/             # AGENTS 模板（生成 / 验证）
 skill/SKILL.md         # 主 agent 使用的 skill
 tests/                 # 冒烟测试 + 推导循环逻辑测试
 ```

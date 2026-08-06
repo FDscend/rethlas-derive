@@ -3,7 +3,9 @@
 平台兼容（参考 Rethlas 验证端 server.py）：
 - Windows npm 安装的 codex 是 .cmd/.ps1 shim，裸名无法被 CreateProcess 拉起；
   用 shutil.which 解析（按 PATHEXT 找到 shim）。
-- Windows 下二进制为 .cmd/.bat 时，经 cmd /c 调用。
+- Windows 下二进制为 .cmd/.bat 时，经 cmd /c 调用；
+  且提示词改经 stdin 传递（codex 用 `-` 从 stdin 读），避免 cmd/批处理 shim
+  截断/转义多行提示词（含 LaTeX、引号、% 等特殊字符）。
 """
 from __future__ import annotations
 
@@ -22,6 +24,11 @@ def resolve_codex_bin(configured: str) -> str:
         return configured
     found = shutil.which("codex")
     return found or "codex"
+
+
+def _prompt_via_stdin(binary: str) -> bool:
+    # Windows 且经 cmd /c + .cmd/.bat shim 时，多行提示词作为参数会被截断
+    return os.name == "nt" and binary.lower().endswith((".cmd", ".bat"))
 
 
 def build_codex_command(
@@ -51,9 +58,10 @@ def build_codex_command(
         ]
     for cfg in extra_configs or ():
         args += ["--config", cfg]
-    args.append(prompt)
     if os.name == "nt" and args[0].lower().endswith((".cmd", ".bat")):
         args = ["cmd", "/c"] + args
+    # 经 cmd/批处理 shim 时用 stdin 传提示词，避免截断；否则作为参数
+    args.append("-" if _prompt_via_stdin(binary) else prompt)
     return args
 
 
@@ -101,8 +109,14 @@ def run_codex(
     )
     log_path.parent.mkdir(parents=True, exist_ok=True)
     timeout = timeout_seconds or None
+    via_stdin = _prompt_via_stdin(binary)
+    input_text = prompt if via_stdin else None
     with log_path.open("w", encoding="utf-8") as fh:
         fh.write(f"command: {shlex.join(cmd)}\n\n")
+        if via_stdin:
+            fh.write("--- prompt (stdin) ---\n")
+            fh.write(prompt)
+            fh.write("\n--- end prompt ---\n\n")
         fh.flush()
         try:
             completed = subprocess.run(
@@ -111,6 +125,7 @@ def run_codex(
                 stdout=fh,
                 stderr=subprocess.STDOUT,
                 text=True,
+                input=input_text,
                 timeout=timeout,
                 check=False,
             )

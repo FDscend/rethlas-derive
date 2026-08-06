@@ -31,6 +31,8 @@ search:
     api_base: https://api.theoremsearch.com
     n_results: 5 # 每次搜索返回条数
     timeout_seconds: 120
+  leansearch:
+    endpoint: https://leansearch.net/thm/search # 预留后端，可配置切换
 
 # ---- PDF 提取 ----
 pdf:

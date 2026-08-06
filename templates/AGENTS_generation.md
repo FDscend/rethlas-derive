@@ -10,35 +10,36 @@
 
 ## 工作区边界
 
-只能读取当前工作目录内的文件：`statement.md`、`refs/`（及 `refs/.extracted/`）、
-`downloads/`（含 `downloads/search_summary.md`）、`memory/`、`results/`、`logs/`。
-不要读取工作区外的路径。
+只能读取/写入当前工作目录内的文件；不要读取工作区外的路径。
 
-## 输入
+## 输入（已由工具准备好，本会话不提供联网检索）
 
 - `statement.md`：权威的完整命题表述（工具假定其完整；所有条件都在其中）。
-- `refs/`：主 agent 提供的参考资料（pdf/tex/md）。PDF 已在 `refs/.extracted/` 提取为文本。
-- `downloads/`：工具自动搜索下载的论文（arXiv TeX 源，.tex 文本）；`search_summary.md` 是搜索结果摘要。
+- `downloads/search_summary.md`：工具自动搜索的相关定理/论文摘要。
+- `downloads/`：工具自动下载的论文（arXiv TeX 源文本，如 `<id>.tex`）。
+- `refs/`：主 agent 提供的参考资料；PDF 已在 `refs/.extracted/` 提取为文本。
+- `results/`：你的证明输出目录；`logs/`：迭代日志。
 
-## 记忆策略（必须）
+工具在生成前已完成自动搜索与论文下载；请直接使用这些材料。
+若材料不足以推进，请深入推理，而不要假设可以联网检索。
 
-推理中间产物必须通过 MCP 工具持久化到 `memory/{problem_id}/`：
+## 记忆策略（必须，用文件方式）
 
-- `memory_init(problem_id=..., meta={...})`
-- `memory_append(problem_id=..., channel=..., record=...)`
-- `memory_search(problem_id=..., query=..., channel=...)`
+推理中间产物必须持久化到 `memory/`（每个通道一个 `.jsonl`，每行一个 JSON 对象，UTF-8）：
 
-通道（append-only，除 meta.json）：`immediate_conclusions` / `toy_examples` /
-`counterexamples` / `big_decisions` / `subgoals` / `proof_steps` / `failed_paths` /
-`branch_states` / `events`。
+- 初始化：写 `memory/meta.json`（含 problem_id、statement、时间戳）
+- 追加：在 `memory/<channel>.jsonl` 末尾追加一行 JSON（含 `ts` 时间戳）
+- 检索：直接读取相应 `.jsonl` 文件回顾
+
+通道：`immediate_conclusions` / `toy_examples` / `counterexamples` / `big_decisions` /
+`subgoals` / `proof_steps` / `failed_paths` / `branch_states` / `events`。
 
 ## 自适应控制循环
 
 每轮迭代先评估当前状态，再选择下一步：
 
-1. **评估**：当前主要难点？是否已充分检索？尝试过哪些分解方案与卡点？有哪些反例/构造？
-2. **检索**：需要外部结果时用 MCP `search_arxiv_theorems` + `download_paper`；本地记忆先用
-   `memory_search`。检索是辅助，不能替代深入思考；检索无果时停止依赖检索，靠自己推进。
+1. **评估**：当前主要难点？尝试过哪些分解方案与卡点？有哪些反例/构造？
+2. **推理**：深入思考；需要时先读 `downloads/`、`refs/`、`memory/` 里的材料。
 3. **常用手段**：
    - 先写 immediate conclusions / 重新表述
    - 构造 toy examples / counterexamples 检查假设与结论
@@ -51,10 +52,3 @@
 - 每次修改后，把「当前最好」的完整证明写到 `results/blueprint.md`（覆盖）。
 - 证明要：逻辑自洽、每一步有依据、明确使用 `statement` 的哪些假设、引用参考资料时给出来源。
 - **不要创建 `results/blueprint_verified.md`**（由外部验证器负责）。
-
-## MCP 工具
-
-- `memory_init` / `memory_append` / `memory_search`
-- `search_arxiv_theorems`
-- `download_paper`
-- `get_references`

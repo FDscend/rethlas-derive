@@ -71,7 +71,7 @@ def main() -> None:
     # --- fake verify：第一次 wrong，之后 correct ---
     state = {"calls": 0}
 
-    def fake_verify(ws, statement, proof, config, tool_dir, workdir):
+    def fake_verify(ws, statement, proof, config):
         state["calls"] += 1
         if state["calls"] == 1:
             return {
@@ -98,10 +98,9 @@ def main() -> None:
 
         ws_dir = Path(td) / result["id"]
         check("AGENTS.md written", (ws_dir / "AGENTS.md").exists())
-        check("codex config written", (ws_dir / ".codex" / "config.toml").exists())
-        toml = (ws_dir / ".codex" / "config.toml").read_text(encoding="utf-8")
-        check("toml has model", "test-model" in toml)
-        check("toml has mcp", "derive_agent" in toml)
+        agents = (ws_dir / "AGENTS.md").read_text(encoding="utf-8")
+        check("AGENTS objective", "blueprint.md" in agents)
+        check("AGENTS file-based memory", "memory/" in agents)
         check("checkpoint verified", (ws_dir / "checkpoint.json").exists())
 
         # 重复 derive：应直接返回已成功
@@ -111,7 +110,7 @@ def main() -> None:
     # --- resume 路径：fresh 全 wrong（跑满 3 轮失败），resume 追加 2 轮后成功 ---
     state_all_wrong = {"n": 0}
 
-    def fake_verify_all_wrong(ws, statement, proof, config, tool_dir, workdir):
+    def fake_verify_all_wrong(ws, statement, proof, config):
         state_all_wrong["n"] += 1
         return {"verdict": "wrong", "verification_report": {"summary": "nope"}, "repair_hints": []}
 
@@ -126,7 +125,7 @@ def main() -> None:
 
         state_pass = {"n": 0}
 
-        def fake_verify_wrong_then_pass(ws, statement, proof, config, tool_dir, workdir):
+        def fake_verify_wrong_then_pass(ws, statement, proof, config):
             state_pass["n"] += 1
             if state_pass["n"] <= 1:
                 return {"verdict": "wrong", "verification_report": {"summary": "still missing"}, "repair_hints": []}

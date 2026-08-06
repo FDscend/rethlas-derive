@@ -135,7 +135,8 @@ class Workspace:
 
     @property
     def verify_runs_dir(self) -> Path:
-        return self.root / ".verify"
+        # 验证工作区放在命题目录外（避免 codex 向上合并父级 AGENTS.md 导致路径错乱）
+        return self.workdir_root / ".verify" / self.problem_id
 
     def exists(self) -> bool:
         return self.root.exists()
@@ -230,4 +231,5 @@ class Workspace:
             _rm(self.blueprint_verified_path)
         if target == "all":
             _rm(self.root)
+            _rm(self.verify_runs_dir)
         return {"id": self.problem_id, "target": target, "removed": removed}
