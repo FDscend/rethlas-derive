@@ -1,0 +1,12 @@
+model = "{{MODEL}}"
+model_reasoning_effort = "{{EFFORT}}"
+personality = "pragmatic"
+
+[notice]
+hide_full_access_warning = true
+
+[mcp_servers.derive_agent]
+command = "{{PYTHON}}"
+args = ["-E", "{{SERVER}}", "--workdir", "{{WORKDIR}}"]
+cwd = "{{TOOL_DIR}}"
+tool_timeout_sec = 3600

@@ -1,0 +1,4 @@
+fastmcp>=2.0
+requests>=2.31
+PyYAML>=6.0
+PyMuPDF>=1.24

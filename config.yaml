@@ -1,0 +1,54 @@
+# 命题推导工具统一配置
+# 所有默认值均可被 CLI 参数覆盖（如 --max-iterations、--workdir；
+# 嵌套字段也有对应参数，如 --download-format、--search-backend、--pdf-backend）。
+
+# ---- 模型（生成/验证统一）----
+model: gpt-5.6-terra # 默认模型
+reasoning_effort: xhigh # 推理强度
+
+# ---- 推导循环 ----
+max_iterations: 8 # 默认最大迭代次数（--max-iterations 覆盖）
+
+# ---- 路径 ----
+workdir: ./workspace # 命题数据工作目录（--workdir 覆盖）
+
+# ---- codex（底层生成/验证）----
+codex:
+  bin: codex # codex 可执行文件路径（Windows npm 安装的是 .cmd shim，需用 shutil.which 解析）
+  timeout_seconds: 0 # 单次 codex exec 超时（秒），0=不限制
+  # Windows 兼容：二进制为 .cmd/.bat 时经 cmd /c 调用（同 Rethlas 验证端 server.py）
+
+# ---- 定理搜索 ----
+search:
+  backend: theoremsearch # theoremsearch（默认）| leansearch（预留）
+  max_search_rounds: 3 # 推导循环内最多自动搜索几轮
+  download_papers: true # 搜索到的论文是否下载到 <命题>/downloads/
+  download:
+    format: tex # tex（默认，下载 arXiv TeX 源，免 PDF 转换）| pdf
+    timeout_seconds: 60 # 单个文件下载超时
+    ratelimit_seconds: 2 # 下载间隔（arXiv 限速）
+  theoremsearch:
+    api_base: https://api.theoremsearch.com
+    n_results: 5 # 每次搜索返回条数
+    timeout_seconds: 120
+
+# ---- PDF 提取 ----
+pdf:
+  backend: mineru # mineru（默认）| pymupdf（强制离线）
+  mineru:
+    mode: extract # 完整转换模式（忽略快速模式）
+    model: vlm
+    auth: npm-cli # npm-cli（默认）| python（读 .env 的 MINERU_TOKEN）
+    timeout_seconds: 900
+  pymupdf:
+    layout: true # 保留版面（类似 pdftotext -layout）
+
+# ---- 验证 ----
+verify:
+  enabled: true # false 则只生成草稿、不做验证
+  max_attempts: 3 # 验证器"证明缺失"误判时的最大重试次数
+  # 模型/推理强度与生成统一，无需单独配置
+
+# ---- 日志 ----
+logging:
+  level: INFO # DEBUG / INFO / WARNING
