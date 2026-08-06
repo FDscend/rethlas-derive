@@ -1,5 +1,5 @@
 ---
-name: derive-proposition
+name: rethlas-derive
 description: >
   对数学命题进行自动推导：传入完整命题表述（与可选参考资料），工具自动搜索相关
   定理和论文、生成自然语言证明、验证并迭代，直到验证通过或达到最大迭代次数。
@@ -13,7 +13,7 @@ metadata:
       - ../config.yaml
 ---
 
-# 命题推导工具（derive-proposition）
+# 命题推导工具（rethlas-derive）
 
 > 先决条件：工具目录 `d:\code\WorkSpace_ai\Rethlas-MCP`，已安装 `pip install -r requirements.txt`，
 > 且 `codex` 可用（Windows 上 npm 安装的 codex 也可，工具会自动兼容）。

@@ -1,4 +1,4 @@
-# 命题推导工具（Rethlas-MCP）
+# rethlas-derive（命题推导工具）
 
 把 `ref\Rethlas` 的「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程封装为独立 CLI（封装成 skill）：
 主 agent 直接传入完整命题表述与参考资料，工具自动搜索、推导、验证、迭代，返回推导结果（JSON + md 路径）。
