@@ -31,5 +31,9 @@ Thumbs.db
 TODO.md
 TODO2.md
 
+# ---- 一次性探测/评估工具（本地使用，非回归测试）----
+tests/probe_skills.py
+tests/probe_multi_agent.py
+
 # 如不想把第三方参考项目纳入仓库，取消下一行注释：
 ref/

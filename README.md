@@ -1,16 +1,35 @@
 # rethlas-derive（命题推导工具）
 
-把「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程（受 Rethlas 启发）封装为独立 CLI（封装成 skill）：
+把「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程（受 [Rethlas](https://github.com/FDscend/Rethlas-Windows) 启发）封装为独立 CLI（封装成 skill）：
 主 agent 直接传入完整命题表述与参考资料，工具自动搜索、推导、验证、迭代，返回推导结果（JSON + md 路径）。
 
 ## 安装
+
+### 1. 安装 codex（npm，全局）
+
+```bash
+npm install -g @openai/codex
+```
+
+> Windows 上 npm 安装的 codex 是 `.cmd` shim，工具会自动兼容（`shutil.which` 解析 + `cmd /c` 调用）。
+
+### 2. 创建虚拟环境并安装依赖
+
+Windows（PowerShell，可执行文件在 `.venv\Scripts\`）：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-前置：`codex` 可用（Windows 上 npm 安装的 `.cmd` shim 也可，工具会自动兼容）。
+macOS / Linux（bash，可执行文件在 `.venv/bin/`）：
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+> 后文命令统一用 `python cli.py ...`，默认已激活 venv（或直接使用上面的 `python` 路径调用）。
 
 ## 用法
 
@@ -57,8 +76,18 @@ tests/                 # 冒烟测试 + 推导循环逻辑测试
 
 ## 测试
 
+Windows（PowerShell）：
+
 ```powershell
-.\.venv\Scripts\python tests\smoke.py            # 冒烟测试（含网络）
-.\.venv\Scripts\python tests\smoke.py --offline  # 跳过网络
-.\.venv\Scripts\python tests\derive_loop_test.py # 推导循环逻辑（fake codex）
+.\\.venv\\Scripts\\python tests\\smoke.py            # 冒烟测试（含网络）
+.\\.venv\\Scripts\\python tests\\smoke.py --offline  # 跳过网络
+.\\.venv\\Scripts\\python tests\\derive_loop_test.py # 推导循环逻辑（fake codex）
+```
+
+macOS / Linux（bash）：
+
+```bash
+.venv/bin/python tests/smoke.py            # 冒烟测试（含网络）
+.venv/bin/python tests/smoke.py --offline  # 跳过网络
+.venv/bin/python tests/derive_loop_test.py # 推导循环逻辑（fake codex）
 ```
