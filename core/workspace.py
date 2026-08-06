@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -21,6 +22,18 @@ def proposition_id(statement: str) -> str:
 
 def _utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+# ---- 数学公式分隔符归一化（兜底，保证输出统一用 $...$ / $$...$$）----
+_DISPLAY_MATH_RE = re.compile(r"\\\[(.*?)\\\]", re.DOTALL)
+_INLINE_MATH_RE = re.compile(r"\\\((.*?)\\\)", re.DOTALL)
+
+
+def normalize_math_delimiters(text: str) -> str:
+    """把 \(...\) / \[...\] 统一转为 $...$ / $$...$$。"""
+    text = _DISPLAY_MATH_RE.sub(lambda m: f"$$\n{m.group(1).strip()}\n$$", text)
+    text = _INLINE_MATH_RE.sub(lambda m: f"${m.group(1)}$", text)
+    return text
 
 
 @dataclass
@@ -196,6 +209,7 @@ class Workspace:
     def copy_verified(self, verify_report: Optional[Dict[str, Any]] = None) -> Path:
         """blueprint.md -> blueprint_verified.md（附上验证报告）。"""
         text = self.blueprint_path.read_text(encoding="utf-8")
+        text = normalize_math_delimiters(text)
         if verify_report:
             report_md = (
                 "\n\n---\n\n## 验证报告\n\n```json\n"
