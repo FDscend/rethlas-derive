@@ -11,6 +11,7 @@
 npm install -g @openai/codex
 ```
 
+> codex 安装后需完成**认证**才能调用：`codex login` 登录 ChatGPT 账号，或配置 API key（如环境变量 `OPENAI_API_KEY`）。
 > Windows 上 npm 安装的 codex 是 `.cmd` shim，工具会自动兼容（`shutil.which` 解析 + `cmd /c` 调用）。
 
 ### 2. 创建虚拟环境并安装依赖
@@ -48,7 +49,7 @@ python cli.py status <id>
 python cli.py clean <id> --target intermediate|failed|success|all [--keep-checkpoint]
 ```
 
-stdout 统一输出 JSON。完整说明见 `skill/SKILL.md`。
+stdout 统一输出 JSON。完整说明见根目录 `SKILL.md`。
 
 ## 配置
 
@@ -60,6 +61,9 @@ stdout 统一输出 JSON。完整说明见 `skill/SKILL.md`。
 
 ```
 cli.py                 # CLI 入口
+config.yaml            # 配置（默认模型 / 迭代次数 / 搜索后端等，可被 CLI 覆盖）
+.env.example           # 环境变量模板；安装后复制为 .env 并填写（见 INSTALL.md）
+.gitignore             # 忽略 .env / .venv / workspace 等
 core/                  # 核心库
   config.py            # 配置加载 + CLI 覆盖
   workspace.py         # 命题 id / checkpoint / 目录
@@ -70,7 +74,7 @@ core/                  # 核心库
   derive.py            # 推导循环编排（纯文件方式，不依赖 codex MCP）
   agent_mcp.py         # 可选：内部 MCP server（memory/search/download，备用/未来 MCP 包装用）
 templates/             # AGENTS 模板（生成 / 验证）
-skill/SKILL.md         # 主 agent 使用的 skill
+SKILL.md               # 主 agent 使用的 skill（根目录即 skill 目录，clone 即用，见 INSTALL.md）
 tests/                 # 冒烟测试 + 推导循环逻辑测试
 ```
 

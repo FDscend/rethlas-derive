@@ -1,42 +1,51 @@
-# 在新仓库安装 rethlas-derive skill（面向 agent 的安装说明）
+# 安装 rethlas-derive skill（面向 agent / 用户的安装说明）
 
-> 本文档是给**被要求"在新仓库安装 rethlas-derive skill"的 agent** 读的逐步说明。
-> 请按顺序执行，每步都有验证；任何一步失败就停下来报告，不要跳过。
+> 本仓库**根目录就是 skill 目录**：`SKILL.md` 与 `cli.py`、`core/`、`config.yaml`、`templates/`、`.env.example` 同级。
+> 安装 = 把本仓库 clone / 解压到目标 agent 的 skills 目录 → 装依赖 → 复制 `.env.example` 为 `.env` 并填写。
+> 不需要复制文件、不需要改路径：`core/config.py` / `core/env.py` 按 `__file__` 相对定位配置，结构不变即可用。
 
-## 0. 先理解：这个 skill 不是单文件
+## 1. 把仓库放到 skills 目录
 
-`rethlas-derive` 是"**可执行工具 + skill 描述**"的组合，不是一段能独立生效的提示词：
+项目级（随仓库提交，协作者 clone 主仓库时即自带 skill）：
 
-```
-skill/SKILL.md     # agent 加载的 skill 描述（frontmatter + 使用说明）
-cli.py             # CLI 入口
-core/              # 推导循环 / codex 封装 / 搜索 / PDF / 验证
-config.yaml        # 配置（默认模型 / 迭代次数 / 搜索后端等）
-templates/         # 生成 / 验证用的 AGENTS 模板（运行时按需生成）
-.env.example       # 环境变量模板（复制为 .env 后填写，见步骤 3）
+```powershell
+# 在目标仓库根目录执行
+git clone https://github.com/FDscend/rethlas-derive.git .github/skills/rethlas-derive
 ```
 
-所以"安装 skill"= **搬整个仓库 → 装依赖 → 把 `skill/SKILL.md` 注册到 agent 平台的 skills 目录**。
-只拷 `SKILL.md` 是装不起来的。
+个人级（全局可用）：
 
-## 1. 确定前置条件
+```powershell
+git clone https://github.com/FDscend/rethlas-derive.git ~/.codex/skills/rethlas-derive    # OpenAI Codex CLI
+git clone https://github.com/FDscend/rethlas-derive.git ~/.copilot/skills/rethlas-derive  # GitHub Copilot
+```
 
-- Python ≥ 3.10
-- Node.js + npm（用于全局安装 codex）
-- 目标 agent 平台的 skills 目录位置（Copilot：`.github/skills/` 或 `~/.copilot/skills/`；
-  Codex：`.codex/skills/` 或 `~/.codex/skills/`，详见步骤 6）
+> - 下载 zip 时，解压出的目录名通常是 `rethlas-derive-main`，请重命名为 `rethlas-derive` 再放入 skills 目录。
+> - 目录约定：项目级 Copilot 认 `.github/skills/`（也认 `.claude/skills/`、`.agents/skills/`），Codex 认 `.codex/skills/`；
+>   个人级 Copilot 认 `~/.copilot/skills/`，Codex 认 `~/.codex/skills/`。
+> - agent 启动时扫描 skills 目录；新增/修改 skill 后需重启会话或重新加载才能生效。
+> - frontmatter 仅含 `name` 与 `description`（agentskills.io 通用格式），无需按平台改动。
 
-## 2. 复制整个仓库
+## 2. 安装依赖（在 skills/rethlas-derive 目录内）
 
-把仓库完整复制到目标机器，例如 `<INSTALL_DIR>/rethlas-derive/`。
+```powershell
+npm install -g @openai/codex          # 1) codex（npm 全局）
+python -m venv .venv                  # 2) Python 虚拟环境 + 依赖
+.\.venv\Scripts\python -m pip install -r requirements.txt
+```
 
-**必须保持相对结构不变**（`cli.py`、`core/`、`config.yaml`、`skill/`、`templates/` 同级）。
-`core/config.py` 按 `__file__` 向上两级找 `config.yaml`，改动相对结构会导致运行时找不到配置。
+macOS / Linux：
+
+```bash
+npm install -g @openai/codex
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+> codex 安装后需**认证**：`codex login`（ChatGPT 账号）或配置 API key（如环境变量 `OPENAI_API_KEY`）。
+> Windows 上 npm 安装的 codex 是 `.cmd` shim，`cli.py` 会自动兼容（`shutil.which` + `cmd /c`）。
 
 ## 3. 复制 `.env.example` 为 `.env` 并填写
-
-仓库自带的 `.env.example` 只是模板；**安装后必须复制为 `.env`**（放工具根目录即可，
-`core/env.py` 会同时搜索当前工作目录和工具根目录）：
 
 ```powershell
 Copy-Item .env.example .env
@@ -56,87 +65,11 @@ cp .env.example .env
 | `TAVILY_API_KEY` | 可选     | Tavily 网络搜索 key；无则降级到 codex 内置 web search           |
 | `DERIVE_CONFIG`  | 可选     | 指定 config.yaml 路径；默认自动查找工具根目录的 config.yaml     |
 
-> 忘了复制也没关系：无 key 时大多数功能会自动降级，需要联网搜索 / PDF 完整提取时再回来补填即可。
-
-## 4. 安装依赖
+## 4. 验证安装
 
 ```powershell
-# 1) codex（npm 全局）
-npm install -g @openai/codex
-
-# 2) Python 虚拟环境 + 依赖（Windows / PowerShell）
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-```
-
-macOS / Linux：
-
-```bash
-npm install -g @openai/codex
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-```
-
-> Windows 上 npm 安装的 codex 是 `.cmd` shim，`cli.py` 会自动兼容（`shutil.which` + `cmd /c`）。
-
-## 5. 检查 `skill/SKILL.md` 中的路径引用
-
-当前版本的 `skill/SKILL.md` 使用通用描述（不写死本机路径），通常无需修改。
-若拿到的是旧版本（先决条件一节写死了 `d:\code\WorkSpace_ai\Rethlas-MCP`），
-请改为步骤 2 的实际安装路径 `<INSTALL_DIR>/rethlas-derive`。
-
-## 6. 把 skill 注册到 agent 平台
-
-**推荐做法**：把整个仓库内容复制到目标 agent 的 skills 目录（`SKILL.md`、`cli.py`、
-`core/`、`config.yaml`、`templates/`、`.env.example` 同目录）。这样 agent 可在同一目录直接执行
-`python cli.py ...`，`core/config.py` 也能按相对位置找到 `config.yaml`。
-
-安装后的目录例子：
-
-### GitHub Copilot（项目级，随仓库提交）
-
-```
-<repo>/
-└── .github/
-    └── skills/
-        └── rethlas-derive/
-            ├── SKILL.md        # 来自 skill/SKILL.md
-            ├── cli.py
-            ├── core/
-            ├── config.yaml
-            ├── .env.example    # 复制为 .env 并填写（见步骤 3）
-            └── templates/
-```
-
-### OpenAI Codex CLI（个人级，全局可用）
-
-```
-~/.codex/skills/
-└── rethlas-derive/
-    ├── SKILL.md
-    ├── cli.py
-    ├── core/
-    ├── config.yaml
-    ├── .env.example    # 复制为 .env 并填写（见步骤 3）
-    └── templates/
-```
-
-目录约定：
-
-- 项目级：Copilot 认 `.github/skills/`（也认 `.claude/skills/`、`.agents/skills/`）；
-  Codex 认 `.codex/skills/`。
-- 个人级：Copilot 认 `~/.copilot/skills/`；Codex 认 `~/.codex/skills/`。
-- 各 agent 启动时扫描 skills 目录；新增/修改 skill 后需重启会话或重新加载。
-- frontmatter 仅含 `name` 与 `description`（agentskills.io 通用格式），无需按平台改动。
-
-## 7. 验证安装
-
-```powershell
-# 冒烟测试（跳过网络，验证依赖与核心逻辑）
-.\.venv\Scripts\python tests\smoke.py --offline
-
-# 确认 CLI 可用（应输出 JSON 命题列表）
-.\.venv\Scripts\python cli.py list
+.\.venv\Scripts\python tests\smoke.py --offline    # 冒烟测试（跳过网络）
+.\.venv\Scripts\python cli.py list                 # 应输出 JSON 命题列表
 ```
 
 可选：跑一条极简命题试推导（会调用 codex，耗时）：
@@ -152,7 +85,6 @@ python3 -m venv .venv
 | 现象                         | 处理                                                                                               |
 | ---------------------------- | -------------------------------------------------------------------------------------------------- |
 | codex 找不到 / 调用失败      | 确认 `npm install -g @openai/codex` 成功，PATH 含 npm 全局 bin（Windows 下为 `.cmd` shim，属正常） |
-| 报"读取 config.yaml 失败"    | 确认 `core/`、`config.yaml` 的相对位置未被破坏（见步骤 2）                                         |
-| 提示词里说工具目录路径不存在 | 步骤 5 未执行或替换错路径                                                                          |
+| 报"读取 config.yaml 失败"    | 确认 `core/`、`config.yaml` 的相对位置未被破坏（与 `SKILL.md` 同级）                               |
 | 提示缺少 `.env` / 读不到 key | 确认已复制 `.env.example` 为 `.env`（见步骤 3），密钥填在对应变量下                                |
 | agent 找不到 skill           | 确认 `SKILL.md` 已放到平台要求的 skills 目录，且文件名/frontmatter 未损坏                          |

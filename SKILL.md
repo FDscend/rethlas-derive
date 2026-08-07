@@ -14,52 +14,38 @@ description: >
 
 > 先决条件：工具目录（安装后的 `rethlas-derive` 目录，含 `cli.py`、`core/`、`config.yaml`、
 > 保持相对结构不变）已就位，已按 `INSTALL.md` 安装依赖（`pip install -r requirements.txt`）、
-> 把 `.env.example` 复制为 `.env` 并填写密钥，且 `codex` 可用（Windows 上 npm 安装的 codex 也可，工具会自动兼容）。
+> 把 `.env.example` 复制为 `.env` 并填写密钥，且 `codex` 可用（Windows 上 npm 安装的 codex 也可，工具会自动兼容。
 > 在新仓库安装 / 注册为 skill：见 `INSTALL.md`。
 
 ## 安装与注册
 
-本 skill 不是单文件：实际执行靠 `cli.py` + `core/` + `config.yaml` + `templates/` + `.env`（由 `.env.example` 复制），
-`SKILL.md` 只是 agent 加载的描述。安装 = 搬整个仓库 → 装依赖 → 复制 `.env.example` 为 `.env` → 把 `SKILL.md`
-注册到目标 agent 的 skills 目录。详细步骤见 `INSTALL.md`。
+本仓库**根目录就是 skill 目录**：`SKILL.md` 与 `cli.py`、`core/`、`config.yaml`、`templates/`、`.env.example` 同级，
+`core/config.py` / `core/env.py` 按 `__file__` 相对定位配置，整体 clone / 解压即可用，**无需复制文件、无需改路径**。
+
+安装 = 把本仓库放到目标 agent 的 skills 目录 → 装依赖 → 复制 `.env.example` 为 `.env` 并填写。详细步骤见 `INSTALL.md`。
 
 本文件 frontmatter 仅含 `name` 与 `description`（agentskills.io 通用格式），
 GitHub Copilot、OpenAI Codex CLI 等支持 skills 的 agent 均可直接识别，无需按平台改动。
 
 ### 以 GitHub Copilot 为例（项目级，随仓库提交）
 
-```
-<repo>/
-└── .github/
-    └── skills/
-        └── rethlas-derive/     # 复制仓库内容到此目录
-            ├── SKILL.md        # 本文件的副本
-            ├── cli.py
-            ├── core/
-            ├── config.yaml
-            ├── .env.example    # 复制为 .env 并填写（见 INSTALL.md 步骤 3）
-            └── templates/
+```powershell
+# 在目标仓库根目录执行：协作者 clone 主仓库时即自带 skill
+git clone https://github.com/FDscend/rethlas-derive.git .github/skills/rethlas-derive
 ```
 
 ### 以 OpenAI Codex CLI 为例（个人级，全局可用）
 
-```
-~/.codex/skills/
-└── rethlas-derive/
-    ├── SKILL.md
-    ├── cli.py
-    ├── core/
-    ├── config.yaml
-    ├── .env.example    # 复制为 .env 并填写（见 INSTALL.md 步骤 3）
-    └── templates/
+```powershell
+git clone https://github.com/FDscend/rethlas-derive.git ~/.codex/skills/rethlas-derive
 ```
 
+> - 下载 zip 时，解压出的目录名通常是 `rethlas-derive-main`，请重命名为 `rethlas-derive` 再放入 skills 目录。
 > - 项目级目录：Copilot 认 `.github/skills/`（也认 `.claude/skills/`、`.agents/skills/`）；
 >   Codex 认 `.codex/skills/`。
 > - 个人级目录：Copilot 认 `~/.copilot/skills/`；Codex 认 `~/.codex/skills/`。
 > - 各 agent 启动时扫描 skills 目录；新增/修改 skill 后需重启会话或重新加载才能生效。
-> - 把整个工具放进 skill 目录，是为了让 agent 能在同一目录直接执行 `python cli.py ...`；
->   `core/config.py` 按相对位置找 `config.yaml`、`core/env.py` 按相对位置找 `.env`，此结构下无需额外配置。
+> - `core/config.py` 按相对位置找 `config.yaml`、`core/env.py` 按相对位置找 `.env`，此结构下无需额外配置。
 
 ## 何时使用
 
