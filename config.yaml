@@ -3,8 +3,8 @@
 # 嵌套字段也有对应参数，如 --download-format、--search-backend、--pdf-backend）。
 
 # ---- 模型（生成/验证统一）----
-model: gpt-5.6-terra # 默认模型
-reasoning_effort: xhigh # 推理强度
+model: gpt-5.6-sol # 默认模型
+reasoning_effort: max # 推理强度
 
 # ---- 推导循环 ----
 max_iterations: 8 # 默认最大迭代次数（--max-iterations 覆盖）

@@ -11,7 +11,8 @@
 npm install -g @openai/codex
 ```
 
-> codex 安装后需完成**认证**才能调用：`codex login` 登录 ChatGPT 账号，或配置 API key（如环境变量 `OPENAI_API_KEY`）。
+> codex 安装后需完成**认证**才能调用：`codex login` 登录 ChatGPT 账号，或配置 API key。
+>
 > Windows 上 npm 安装的 codex 是 `.cmd` shim，工具会自动兼容（`shutil.which` 解析 + `cmd /c` 调用）。
 
 ### 2. 创建虚拟环境并安装依赖
