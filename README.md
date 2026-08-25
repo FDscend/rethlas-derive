@@ -1,98 +1,101 @@
-# rethlas-derive（命题推导工具）
+| English | [简体中文](./README.zh.md) |
+| ------- | -------------------------- |
 
-把「命题 → 搜索 → 生成推导 → 验证 → 迭代」流程（受 [Rethlas](https://github.com/FDscend/Rethlas-Windows) 启发）封装为独立 CLI（封装成 skill）：
-主 agent 直接传入完整命题表述与参考资料，工具自动搜索、推导、验证、迭代，返回推导结果（JSON + md 路径）。
+# rethlas-derive — Proposition Derivation Tool
 
-## 安装
+A standalone CLI (packaged as a skill) that orchestrates the "proposition → search → derive → verify → iterate" pipeline (inspired by [Rethlas](https://github.com/FDscend/Rethlas-Windows)):
+the host agent passes in a full proposition statement and reference materials, and the tool automatically searches, derives, verifies, and iterates, returning the derivation result (JSON + md path).
 
-### 1. 安装 codex（npm，全局）
+## Installation
+
+### 1. Install codex (npm, globally)
 
 ```bash
 npm install -g @openai/codex
 ```
 
-> codex 安装后需完成**认证**才能调用：`codex login` 登录 ChatGPT 账号，或配置 API key。
+> After installation you must **authenticate** before codex can be invoked: run `codex login` to sign in with a ChatGPT account, or [configure an API key](https://fdscend.github.io/obsidian_tutorial/section12/02_codex%E5%9C%A8vscode%E4%B8%AD%E7%9A%84%E5%AE%89%E8%A3%85%E4%B8%8E%E9%85%8D%E7%BD%AE#%E6%96%B9%E5%BC%8F-bapi-key%E5%85%8D%E7%BD%91%E9%A1%B5%E7%99%BB%E5%BD%95).
 >
-> Windows 上 npm 安装的 codex 是 `.cmd` shim，工具会自动兼容（`shutil.which` 解析 + `cmd /c` 调用）。
+> On Windows, npm installs codex as a `.cmd` shim — the tool handles this automatically (`shutil.which` + `cmd /c`).
 
-### 2. 创建虚拟环境并安装依赖
+### 2. Create a virtual environment and install dependencies
 
-Windows（PowerShell，可执行文件在 `.venv\Scripts\`）：
+Windows (PowerShell, executables in `.venv\Scripts\`):
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-macOS / Linux（bash，可执行文件在 `.venv/bin/`）：
+macOS / Linux (bash, executables in `.venv/bin/`):
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-> 后文命令统一用 `python cli.py ...`，默认已激活 venv（或直接使用上面的 `python` 路径调用）。
+> All subsequent commands assume `python cli.py ...` with an activated venv (or use the full path above).
 
-## 用法
+## Usage
 
 ```powershell
-# 推导
-python cli.py derive --statement "<完整命题表述>" [--ref 论文.pdf ...] [--max-iterations 8]
+# Derive
+python cli.py derive --statement "<full proposition>" [--ref paper.pdf ...] [--max-iterations 8]
 python cli.py derive --statement-file s.md --workdir ./workspace
 
-# 失败后判断 & 续推（追加迭代次数 / 追加参考资料）
+# Inspect failure & resume (add iterations / add references)
 python cli.py resume <id> --extra-iterations 2
-python cli.py resume <id> --extra-iterations 2 --add-ref 论文.pdf
+python cli.py resume <id> --extra-iterations 2 --add-ref paper.pdf
 
-# 状态与清理
+# Status & cleanup
 python cli.py list
 python cli.py status <id>
 python cli.py clean <id> --target intermediate|failed|success|all [--keep-checkpoint]
 ```
 
-stdout 统一输出 JSON。完整说明见根目录 `SKILL.md`。
+stdout outputs JSON in all cases. See `SKILL.md` in the repo root for full details.
 
-## 配置
+## Configuration
 
-单文件 `config.yaml`（默认模型 / 推理强度 / 迭代次数 / 工作目录 / 搜索与 PDF 后端等）。
-所有默认值均可被 CLI 参数覆盖（`--max-iterations`、`--workdir`、`--download-format`、
-`--search-backend`、`--pdf-backend`）。
+A single `config.yaml` file controls defaults (model, reasoning intensity, iteration count, working directory, search and PDF backends, etc.).
+Every default can be overridden by CLI flags (`--max-iterations`, `--workdir`, `--download-format`,
+`--search-backend`, `--pdf-backend`).
 
-## 结构
+## Project Structure
 
 ```
-cli.py                 # CLI 入口
-config.yaml            # 配置（默认模型 / 迭代次数 / 搜索后端等，可被 CLI 覆盖）
-.env.example           # 环境变量模板；安装后复制为 .env 并填写（见 INSTALL.md）
-.gitignore             # 忽略 .env / .venv / workspace 等
-core/                  # 核心库
-  config.py            # 配置加载 + CLI 覆盖
-  workspace.py         # 命题 id / checkpoint / 目录
-  codex.py             # codex exec 封装（Windows 兼容 + stdin 传提示词）
-  search.py            # TheoremSearch + arXiv TeX 源下载
-  pdf.py               # PDF 提取（MinerU -> .env python -> PyMuPDF）
-  verify.py            # 自然语言验证（独立 codex 会话）
-  derive.py            # 推导循环编排（纯文件方式，不依赖 codex MCP）
-  agent_mcp.py         # 可选：内部 MCP server（memory/search/download，备用/未来 MCP 包装用）
-templates/             # AGENTS 模板（生成 / 验证）
-SKILL.md               # 主 agent 使用的 skill（根目录即 skill 目录，clone 即用，见 INSTALL.md）
-tests/                 # 冒烟测试 + 推导循环逻辑测试
+cli.py                 # CLI entry point
+config.yaml            # Configuration (defaults for model / iterations / search backend; CLI-overridable)
+.env.example           # Environment variable template; copy to .env and fill in after install (see INSTALL.md)
+.gitignore             # Ignores .env / .venv / workspace / etc.
+core/                  # Core library
+  config.py            # Config loading + CLI overrides
+  workspace.py         # Proposition id / checkpoint / directory management
+  codex.py             # Codex exec wrapper (Windows-compatible + stdin prompts)
+  search.py            # TheoremSearch + arXiv TeX source download
+  pdf.py               # PDF extraction (MinerU → .env python → PyMuPDF)
+  verify.py            # Natural-language verification (standalone codex session)
+  derive.py            # Derivation loop orchestration (pure-file approach, no codex MCP dependency)
+  agent_mcp.py         # Optional: internal MCP server (memory/search/download; reserved / future MCP wrapper)
+templates/             # AGENTS templates (generation / verification)
+SKILL.md               # Skill consumed by the host agent (repo root = skill dir; clone and go; see INSTALL.md)
+tests/                 # Smoke tests + derivation loop logic tests
 ```
 
-## 测试
+## Testing
 
-Windows（PowerShell）：
+Windows (PowerShell):
 
 ```powershell
-.\.venv\Scripts\python tests\smoke.py            # 冒烟测试（含网络）
-.\.venv\Scripts\python tests\smoke.py --offline  # 跳过网络
-.\.venv\Scripts\python tests\derive_loop_test.py # 推导循环逻辑（fake codex）
+.\.venv\Scripts\python tests\smoke.py            # Smoke test (with network)
+.\.venv\Scripts\python tests\smoke.py --offline  # Skip network
+.\.venv\Scripts\python tests\derive_loop_test.py # Derivation loop logic (fake codex)
 ```
 
-macOS / Linux（bash）：
+macOS / Linux (bash):
 
 ```bash
-.venv/bin/python tests/smoke.py            # 冒烟测试（含网络）
-.venv/bin/python tests/smoke.py --offline  # 跳过网络
-.venv/bin/python tests/derive_loop_test.py # 推导循环逻辑（fake codex）
+.venv/bin/python tests/smoke.py            # Smoke test (with network)
+.venv/bin/python tests/smoke.py --offline  # Skip network
+.venv/bin/python tests/derive_loop_test.py # Derivation loop logic (fake codex)
 ```

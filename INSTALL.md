@@ -1,40 +1,40 @@
-# 安装 rethlas-derive skill（面向 agent / 用户的安装说明）
+# Installing the rethlas-derive Skill (Agent / User Guide)
 
-> 本仓库**根目录就是 skill 目录**：`SKILL.md` 与 `cli.py`、`core/`、`config.yaml`、`templates/`、`.env.example` 同级。
-> 安装 = 把本仓库 clone / 解压到目标 agent 的 skills 目录 → 装依赖 → 复制 `.env.example` 为 `.env` 并填写。
-> 不需要复制文件、不需要改路径：`core/config.py` / `core/env.py` 按 `__file__` 相对定位配置，结构不变即可用。
+> **The repo root is the skill directory itself.** `SKILL.md` sits alongside `cli.py`, `core/`, `config.yaml`, `templates/`, and `.env.example`.
+> Install = clone / extract this repo into the target agent's skills directory → install dependencies → copy `.env.example` to `.env` and fill in your keys.
+> No file copying or path editing is needed — `core/config.py` and `core/env.py` resolve config relative to `__file__`, so the layout just needs to stay intact.
 
-## 1. 把仓库放到 skills 目录
+## 1. Place the repo in the skills directory
 
-项目级（随仓库提交，协作者 clone 主仓库时即自带 skill）：
+**Project-level** (committed to the repo; collaborators get the skill when they clone):
 
 ```powershell
-# 在目标仓库根目录执行
+# Run from the target repo root
 git clone https://github.com/FDscend/rethlas-derive.git .github/skills/rethlas-derive
 ```
 
-个人级（全局可用）：
+**User-level** (available globally):
 
 ```powershell
 git clone https://github.com/FDscend/rethlas-derive.git ~/.codex/skills/rethlas-derive    # OpenAI Codex CLI
 git clone https://github.com/FDscend/rethlas-derive.git ~/.copilot/skills/rethlas-derive  # GitHub Copilot
 ```
 
-> - 下载 zip 时，解压出的目录名通常是 `rethlas-derive-main`，请重命名为 `rethlas-derive` 再放入 skills 目录。
-> - 目录约定：项目级 Copilot 认 `.github/skills/`（也认 `.claude/skills/`、`.agents/skills/`），Codex 认 `.codex/skills/`；
->   个人级 Copilot 认 `~/.copilot/skills/`，Codex 认 `~/.codex/skills/`。
-> - agent 启动时扫描 skills 目录；新增/修改 skill 后需重启会话或重新加载才能生效。
-> - frontmatter 仅含 `name` 与 `description`（agentskills.io 通用格式），无需按平台改动。
+> - When downloading a zip, the extracted folder is usually named `rethlas-derive-main` — rename it to `rethlas-derive` before placing it in the skills directory.
+> - Directory conventions: project-level Copilot reads `.github/skills/` (also `.claude/skills/`, `.agents/skills/`); Codex reads `.codex/skills/`.
+>   User-level Copilot reads `~/.copilot/skills/`; Codex reads `~/.codex/skills/`.
+> - Agents scan the skills directory at startup. After adding or modifying a skill, restart the session or reload for changes to take effect.
+> - The frontmatter only needs `name` and `description` (agentskills.io generic format) — no platform-specific tweaks required.
 
-## 2. 安装依赖（在 skills/rethlas-derive 目录内）
+## 2. Install dependencies (inside skills/rethlas-derive)
 
 ```powershell
-npm install -g @openai/codex          # 1) codex（npm 全局）
-python -m venv .venv                  # 2) Python 虚拟环境 + 依赖
+npm install -g @openai/codex          # 1) codex (npm global)
+python -m venv .venv                  # 2) Python venv + dependencies
 .\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
-macOS / Linux：
+macOS / Linux:
 
 ```bash
 npm install -g @openai/codex
@@ -42,49 +42,49 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-> codex 安装后需**认证**：`codex login`（ChatGPT 账号）或配置 API key（如环境变量 `OPENAI_API_KEY`）。
-> Windows 上 npm 安装的 codex 是 `.cmd` shim，`cli.py` 会自动兼容（`shutil.which` + `cmd /c`）。
+> After installing codex, **authenticate**: `codex login` (ChatGPT account) or set the API key via an environment variable (`OPENAI_API_KEY`).
+> On Windows, npm installs codex as a `.cmd` shim — `cli.py` handles this automatically (`shutil.which` + `cmd /c`).
 
-## 3. 复制 `.env.example` 为 `.env` 并填写
+## 3. Copy `.env.example` to `.env` and fill in your keys
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-macOS / Linux：
+macOS / Linux:
 
 ```bash
 cp .env.example .env
 ```
 
-打开 `.env` 按需填写密钥（`.env` 已被 gitignore，不会提交；留空也能跑，会自动降级）：
+Open `.env` and fill in the keys you need (`.env` is gitignored and won't be committed; leaving values empty is fine — the tool degrades gracefully):
 
-| 变量             | 是否必填 | 说明                                                            |
-| ---------------- | -------- | --------------------------------------------------------------- |
-| `MINERU_TOKEN`   | 可选     | MinerU 完整模式 + VLM 的 token；无则降级到离线 PyMuPDF PDF 提取 |
-| `TAVILY_API_KEY` | 可选     | Tavily 网络搜索 key；无则降级到 codex 内置 web search           |
-| `DERIVE_CONFIG`  | 可选     | 指定 config.yaml 路径；默认自动查找工具根目录的 config.yaml     |
+| Variable         | Required | Description                                                                               |
+| ---------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `MINERU_TOKEN`   | Optional | Token for MinerU full-mode + VLM; falls back to offline PyMuPDF PDF extraction if omitted |
+| `TAVILY_API_KEY` | Optional | Tavily web search key; falls back to codex built-in web search if omitted                 |
+| `DERIVE_CONFIG`  | Optional | Path to `config.yaml`; defaults to the one in the tool root directory                     |
 
-## 4. 验证安装
+## 4. Verify the installation
 
 ```powershell
-.\.venv\Scripts\python tests\smoke.py --offline    # 冒烟测试（跳过网络）
-.\.venv\Scripts\python cli.py list                 # 应输出 JSON 命题列表
+.\.venv\Scripts\python tests\smoke.py --offline    # Smoke test (skips network)
+.\.venv\Scripts\python cli.py list                 # Should print a JSON proposition list
 ```
 
-可选：跑一条极简命题试推导（会调用 codex，耗时）：
+Optional: run a minimal derivation (invokes codex, takes a while):
 
 ```powershell
 .\.venv\Scripts\python cli.py derive --statement "1+1=2" --max-iterations 1
 ```
 
-全部通过即安装成功；skill 已可被 agent 发现并调用。
+If all of the above pass, the installation is complete and the skill is ready for agent discovery and invocation.
 
-## 常见问题
+## Troubleshooting
 
-| 现象                         | 处理                                                                                               |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| codex 找不到 / 调用失败      | 确认 `npm install -g @openai/codex` 成功，PATH 含 npm 全局 bin（Windows 下为 `.cmd` shim，属正常） |
-| 报"读取 config.yaml 失败"    | 确认 `core/`、`config.yaml` 的相对位置未被破坏（与 `SKILL.md` 同级）                               |
-| 提示缺少 `.env` / 读不到 key | 确认已复制 `.env.example` 为 `.env`（见步骤 3），密钥填在对应变量下                                |
-| agent 找不到 skill           | 确认 `SKILL.md` 已放到平台要求的 skills 目录，且文件名/frontmatter 未损坏                          |
+| Symptom                            | Fix                                                                                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| codex not found / invocation fails | Verify `npm install -g @openai/codex` succeeded and that your `PATH` includes the npm global bin (on Windows the `.cmd` shim is expected) |
+| "Failed to read config.yaml"       | Confirm the relative layout of `core/`, `config.yaml`, and `SKILL.md` is intact                                                           |
+| Missing `.env` / cannot read keys  | Copy `.env.example` to `.env` (see step 3) and fill in the corresponding variables                                                        |
+| Agent cannot find the skill        | Confirm `SKILL.md` is in the platform-required skills directory and that the filename / frontmatter is not corrupted                      |
