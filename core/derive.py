@@ -100,8 +100,10 @@ def _search_round(
     web_cfg = search_cfg.get("web", {})
     if web_cfg.get("enabled", True):
         try:
+            # Tavily query 上限 1500 字符，命题表述往往超长；截断后再查。
+            web_query = statement[:1400]
             web_results = web_search_mod.web_search(
-                statement,
+                web_query,
                 max_results=int(web_cfg.get("max_results", 5)),
                 timeout_seconds=int(web_cfg.get("timeout_seconds", 30)),
             )
